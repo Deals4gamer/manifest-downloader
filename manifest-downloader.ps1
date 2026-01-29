@@ -3,7 +3,6 @@ param(
     [string]$AppId
 )
 
-# Set console encoding to UTF8
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $Host.UI.RawUI.WindowTitle = "Steam Manifest Downloader (For Steamtools)"
 
@@ -20,50 +19,31 @@ function Write-ProgressBar {
     $filled = [math]::Floor(($Current / [math]::Max($Total, 1)) * $Width)
     $empty = $Width - $filled
 
-    $barFilled = "#" * $filled
-    $barEmpty = "-" * $empty
-
-    Write-Host ("`r  {0} [{1}" -f $Label, $barFilled) -NoNewline
-    Write-Host $barEmpty -NoNewline -ForegroundColor DarkGray
-    Write-Host ("] {0}% ({1}/{2})    " -f $percent, $Current, $Total) -NoNewline
+    Write-Host ("`r  {0} [{1}{2}] {3}% ({4}/{5})    " -f `
+        $Label,
+        ("#" * $filled),
+        ("-" * $empty),
+        $percent,
+        $Current,
+        $Total
+    ) -NoNewline
 }
 
-function Write-Status {
-    param(
-        [string]$Message,
-        [ConsoleColor]$Color = "White"
-    )
-    Write-Host "  [*] $Message" -ForegroundColor $Color
-}
-
-function Write-Success {
-    param([string]$Message)
-    Write-Host "  [+] $Message" -ForegroundColor Green
-}
-
-function Write-ErrorMsg {
-    param([string]$Message)
-    Write-Host "  [-] $Message" -ForegroundColor Red
-}
-
-function Write-WarningMsg {
-    param([string]$Message)
-    Write-Host "  [!] $Message" -ForegroundColor Yellow
-}
+function Write-Status { param([string]$m) Write-Host "  [*] $m" }
+function Write-Success { param([string]$m) Write-Host "  [+] $m" -ForegroundColor Green }
+function Write-ErrorMsg { param([string]$m) Write-Host "  [-] $m" -ForegroundColor Red }
+function Write-WarningMsg { param([string]$m) Write-Host "  [!] $m" -ForegroundColor Yellow }
 
 function Get-SteamPath {
-    $registryPaths = @(
+    $paths = @(
         "HKLM:\SOFTWARE\WOW6432Node\Valve\Steam",
         "HKLM:\SOFTWARE\Valve\Steam",
         "HKCU:\SOFTWARE\Valve\Steam"
     )
-
-    foreach ($path in $registryPaths) {
+    foreach ($p in $paths) {
         try {
-            $steamPath = (Get-ItemProperty -Path $path -ErrorAction SilentlyContinue).InstallPath
-            if ($steamPath -and (Test-Path $steamPath)) {
-                return $steamPath
-            }
+            $sp = (Get-ItemProperty $p -ErrorAction SilentlyContinue).InstallPath
+            if ($sp -and (Test-Path $sp)) { return $sp }
         } catch {}
     }
     return $null
@@ -71,41 +51,27 @@ function Get-SteamPath {
 
 function Get-DepotIdsFromLua {
     param([string]$LuaPath)
-
-    $depots = @()
-    $content = Get-Content -Path $LuaPath -ErrorAction Stop
-
-    foreach ($line in $content) {
-        if ($line -match 'addappid\s*\(\s*(\d+)\s*,\s*\d+\s*,\s*"[a-fA-F0-9]+"') {
-            $depots += $matches[1]
+    $ids = @()
+    foreach ($l in Get-Content $LuaPath) {
+        if ($l -match 'addappid\s*\(\s*(\d+)\s*,\s*\d+\s*,\s*"[a-fA-F0-9]+"') {
+            $ids += $matches[1]
         }
     }
-
-    return $depots | Select-Object -Unique
+    return $ids | Select-Object -Unique
 }
 
 function Get-AppInfo {
     param([string]$AppId)
-
     try {
-        return Invoke-RestMethod "https://api.steamcmd.net/v1/info/$AppId" -TimeoutSec 30
-    } catch {
-        return $null
-    }
+        Invoke-RestMethod "https://api.steamcmd.net/v1/info/$AppId" -TimeoutSec 30
+    } catch { $null }
 }
 
 function Get-ManifestIdForDepot {
-    param(
-        [object]$AppInfo,
-        [string]$AppId,
-        [string]$DepotId
-    )
-
+    param($AppInfo, $AppId, $DepotId)
     try {
-        return $AppInfo.data.$AppId.depots.$DepotId.manifests.public.gid
-    } catch {
-        return $null
-    }
+        $AppInfo.data.$AppId.depots.$DepotId.manifests.public.gid
+    } catch { $null }
 }
 
 function Download-Manifest {
@@ -113,48 +79,47 @@ function Download-Manifest {
         [string]$ApiKey,
         [string]$DepotId,
         [string]$ManifestId,
-        [string]$OutputPath
+        [string]$OutputPath,
+        [int]$MaxRetries = 5
     )
 
     $url = "https://api.manifesthub1.filegear-sg.me/manifest?apikey=$ApiKey&depotid=$DepotId&manifestid=$ManifestId"
-    $outputFile = Join-Path $OutputPath "${DepotId}_${ManifestId}.manifest"
+    $out = Join-Path $OutputPath "${DepotId}_${ManifestId}.manifest"
 
-    try {
-        Invoke-WebRequest $url -OutFile $outputFile -TimeoutSec 120
-        if ((Get-Item $outputFile).Length -gt 0) {
-            return $true
-        }
-    } catch {}
+    for ($i=1; $i -le $MaxRetries; $i++) {
+        try {
+            if (Test-Path $out) { Remove-Item $out -Force }
+            Invoke-WebRequest $url -OutFile $out -TimeoutSec 120
+            if ((Get-Item $out).Length -gt 0) { return $true }
+        } catch {}
+        Start-Sleep 3
+    }
     return $false
 }
-
-# ========================= MAIN =========================
 
 if (-not $ApiKey) { $ApiKey = Read-Host "Enter ManifestHub API Key" }
 if (-not $AppId)  { $AppId  = Read-Host "Enter Steam AppID" }
 
-$steamPath = Get-SteamPath
-if (-not $steamPath) { Write-ErrorMsg "Steam not found"; exit }
+$steam = Get-SteamPath
+if (-not $steam) { Write-ErrorMsg "Steam not found"; exit }
 
-$luaPath = Join-Path $steamPath "config\stplug-in\$AppId.lua"
-if (-not (Test-Path $luaPath)) { Write-ErrorMsg "Lua file not found"; exit }
+$lua = Join-Path $steam "config\stplug-in\$AppId.lua"
+if (-not (Test-Path $lua)) { Write-ErrorMsg "Lua file not found"; exit }
 
-$depots = Get-DepotIdsFromLua $luaPath
+$depots = Get-DepotIdsFromLua $lua
 $appInfo = Get-AppInfo $AppId
 
-$cachePath = Join-Path $steamPath "depotcache"
-if (-not (Test-Path $cachePath)) {
-    New-Item -ItemType Directory -Path $cachePath | Out-Null
-}
+$cache = Join-Path $steam "depotcache"
+if (-not (Test-Path $cache)) { New-Item -ItemType Directory $cache | Out-Null }
 
-foreach ($depot in $depots) {
-    $manifest = Get-ManifestIdForDepot $appInfo $AppId $depot
-    if ($manifest) {
-        Write-Status "Downloading Depot $depot"
-        if (Download-Manifest $ApiKey $depot $manifest $cachePath) {
-            Write-Success "Depot $depot done"
+foreach ($d in $depots) {
+    $m = Get-ManifestIdForDepot $appInfo $AppId $d
+    if ($m) {
+        Write-Status "Downloading depot $d"
+        if (Download-Manifest $ApiKey $d $m $cache) {
+            Write-Success "Depot $d done"
         } else {
-            Write-ErrorMsg "Depot $depot failed"
+            Write-ErrorMsg "Depot $d failed"
         }
     }
 }

@@ -22,21 +22,19 @@ param(
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $Host.UI.RawUI.WindowTitle = "Steam Manifest Downloader (For Steamtools)"
 
-<#function Write-Header {
+function Write-Header {
     Clear-Host
     Write-Host ""
-    # Clickable hyperlinks using ANSI escape sequences (works in Windows Terminal)
-    $esc = [char]27
-    $manifestHubLink = "$esc]8;;https://github.com/SteamAutoCracks/ManifestHub$esc\ManifestHub$esc]8;;$esc\"
-    $discordLink = "$esc]8;;https://discord.gg/luatools$esc\discord.gg/luatools$esc]8;;$esc\"
-    Write-Host "  +================================================================+" -ForegroundColor Cyan
-    Write-Host "  |        STEAM MANIFEST DOWNLOADER (For Steamtools)              |" -ForegroundColor Cyan
-    Write-Host "  |   Downloads Out-Of-Date Manifest Files From $manifestHubLink        |" -ForegroundColor Cyan
-    Write-Host "  |                                                                |" -ForegroundColor Cyan
-    Write-Host "  |                   by $discordLink                       |" -ForegroundColor DarkCyan
-    Write-Host "  +================================================================+" -ForegroundColor Cyan
+
+    Write-Host "+====================================================================+" -ForegroundColor Cyan
+    Write-Host "|            CUSTOM STEAM MANIFEST DOWNLOADER                         |" -ForegroundColor Cyan
+    Write-Host "|            Downloads depot manifests from ManifestHub               |" -ForegroundColor Cyan
+    Write-Host "|                                                                      |" -ForegroundColor Cyan
+    Write-Host "|            by DEALS4GAMER                                            |" -ForegroundColor DarkCyan
+    Write-Host "+====================================================================+" -ForegroundColor Cyan
+
     Write-Host ""
-}#>
+}
 
 function Write-ProgressBar {
     param(
@@ -216,7 +214,7 @@ function Format-FileSize {
 # MAIN SCRIPT
 # ===========================================================================
 
-#Write-Header
+Write-Header
 
 # Get API Key (check param -> env var -> prompt)
 if (-not $ApiKey) {
@@ -475,4 +473,3 @@ if ($failedDepots.Count -gt 0) {
 Write-Host ""
 Write-Host "  Press any key to exit..." -ForegroundColor DarkGray
 $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
-

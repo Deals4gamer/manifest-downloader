@@ -28,9 +28,7 @@ function Write-Header {
 
     Write-Host "+====================================================================+" -ForegroundColor Cyan
     Write-Host "|            CUSTOM STEAM MANIFEST DOWNLOADER                         |" -ForegroundColor Cyan
-    Write-Host "|            Downloads depot manifests from ManifestHub               |" -ForegroundColor Cyan
-    Write-Host "|                                                                      |" -ForegroundColor Cyan
-    Write-Host "|            by DEALS4GAMER                                            |" -ForegroundColor DarkCyan
+    Write-Host "|            by DEALS4GAMER                                           |" -ForegroundColor DarkCyan
     Write-Host "+====================================================================+" -ForegroundColor Cyan
 
     Write-Host ""
@@ -473,4 +471,5 @@ if ($failedDepots.Count -gt 0) {
 Write-Host ""
 Write-Host "  Press any key to exit..." -ForegroundColor DarkGray
 $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+
 

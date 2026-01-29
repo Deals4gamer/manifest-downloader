@@ -342,6 +342,16 @@ if (-not (Test-Path $depotCachePath)) {
 Write-Status "Output directory: $depotCachePath"
 Write-Host ""
 
+# ---- ManifestHub availability check ----
+Write-Status "Checking ManifestHub availability..."
+try {
+    Invoke-WebRequest "https://api.manifesthub1.filegear-sg.me/health" -TimeoutSec 5 | Out-Null
+    Write-Success "ManifestHub is online"
+} catch {
+    Write-ErrorMsg "ManifestHub is currently unavailable. Try again later."
+    exit 1
+}
+
 # ===========================================================================
 # DOWNLOAD SECTION
 # ===========================================================================
@@ -471,6 +481,7 @@ if ($failedDepots.Count -gt 0) {
 Write-Host ""
 Write-Host "  Press any key to exit..." -ForegroundColor DarkGray
 $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+
 
 
 

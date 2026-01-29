@@ -216,7 +216,7 @@ function Format-FileSize {
 # MAIN SCRIPT
 # ===========================================================================
 
-Write-Header
+#Write-Header
 
 # Get API Key (check param -> env var -> prompt)
 if (-not $ApiKey) {
@@ -475,3 +475,4 @@ if ($failedDepots.Count -gt 0) {
 Write-Host ""
 Write-Host "  Press any key to exit..." -ForegroundColor DarkGray
 $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+

@@ -221,8 +221,8 @@ if (-not $ApiKey) {
     $ApiKey = $env:MH_API_KEY
 }
 if (-not $ApiKey) {
-    Write-Host "  Get your API key from: " -NoNewline
-    Write-Host "https://manifesthub1.filegear-sg.me/" -ForegroundColor Yellow
+    #Write-Host "  Get your API key from: " -NoNewline
+    #Write-Host "https://manifesthub1.filegear-sg.me/" -ForegroundColor Yellow
     Write-Host ""
     $ApiKey = Read-Host "  Enter ManifestHub API Key"
 }
@@ -473,3 +473,4 @@ if ($failedDepots.Count -gt 0) {
 Write-Host ""
 Write-Host "  Press any key to exit..." -ForegroundColor DarkGray
 $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+
